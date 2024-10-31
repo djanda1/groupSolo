@@ -44,6 +44,8 @@ public class UserManagementApp extends Application {
 		Button listUsers = new Button("List Users");
 		Button deleteUsers = new Button("Delete a user");
 		TextField deleteAccountInput = new TextField();
+		Button updateRoles = new Button("Update a user's role(s)");
+		TextField updateRolesInput = new TextField();
 		Button generatePasswordStudent = new Button("Generate invite code for student");
 		Button generatePasswordInstructor = new Button("Generate invite code password for instructor");
 		Button generatePasswordAdmin = new Button("Generate invite code for admin");
@@ -83,6 +85,20 @@ public class UserManagementApp extends Application {
 			System.out.print("Invite code for both student and instructor role: " + oneTimeInstructor + "\nThis code expires 12/31/2024\n");
 		});
 		articles.setOnAction(e-> articleHomePage(stage));
+
+		
+		updateRolesInput.setPromptText("Enter the username of the desired account to update its roles"); //update roles
+		updateRoles.setOnAction(e ->{
+			String username = updateRolesInput.getText();
+			User desiredUser = users.get(username);
+			if(desiredUser != null) {
+				updateRolesPage(stage, username);
+			} else {
+				showAlert("Error", "This username does not exist, please enter a valid account username");
+			}});
+		
+	    	layout.getChildren().addAll(updateRolesInput, updateRoles);
+
 		
 		deleteAccountInput.setPromptText("Enter the username of the account desired to be deleted");
 		
@@ -100,7 +116,9 @@ public class UserManagementApp extends Application {
 		layout.getChildren().addAll(listUsers, deleteAccountInput, deleteUsers, resetUserInput, resetUser, generatePasswordStudent, generatePasswordInstructor, generatePasswordAdmin, generatePasswordStuIns,articles,logout);
 		Scene scene = new Scene(layout, 500, 500);
 		stage.setScene(scene);
-		listUsers.setOnAction(e -> listUsers(stage));
+		listUsers.setOnAction(e ->listUsers(stage));
+
+		
 	}
 	
 	private void articleHomePage(Stage stage)	{
@@ -115,35 +133,77 @@ public class UserManagementApp extends Application {
 		Button deleteArticle = new Button("Delete");
 		Button viewArticle = new Button("View Article");
 		Button goBack = new Button("Go Back");
-		
+		Button viewByGroup = new Button("View articles by group");
+		Button backup = new Button("Backup all articles");
+		Button restore = new Button("Restore all articles from backup");
+		Button backupGroup = new Button("Backup Group");
+		Button restoreGroup = new Button("Restore Group");
 		//text fields for buttons
 		TextField deleteArticleInput = new TextField();
 		TextField viewArticleInput = new TextField();
-		
+		TextField viewByGroupTf = new TextField();
+		TextField backupByGroup = new TextField();
+		TextField restoreByGroup = new TextField();
 		//Set prompts for text fields
+		backupByGroup.setPromptText("Enter the group you wish to backup");
 		deleteArticleInput.setPromptText("Enter the title of the article you wish to delete");
 		viewArticleInput.setPromptText("Enter the title of the article you wish to view");
-
+		viewByGroupTf.setPromptText("Enter the group you wish to view");
+		restoreByGroup.setPromptText("Enter the group you wish to restore");
+		
 		//button actions
 		if(currentUser.getRoles().get(0).equals("Admin"))
 			goBack.setOnAction(e ->showAdminPage(stage, "admin"));
 		else if(currentUser.getRoles().get(0).equals("Instructor"))
 			goBack.setOnAction(e ->showHomePageInstructor(stage, "Instructor"));
 		viewArticle.setOnAction(e -> {
-			String name = viewArticle.getText();
-			if(!name.isEmpty())
+			String name = viewArticleInput.getText();
+			Articles articleName = articles.get(name);
+			if(articleName != null)
 			{
 				articleWindow(stage, name);
 			}
 			else
-				showAlert("Error", "Please enter the email you would like to reset");
+				showAlert("Error", "The article you entered does not exist");
 		});
 		createArticle.setOnAction(e -> createArticlePage(stage));
 		listArticles.setOnAction(e -> listArticles(stage));
+		viewByGroup.setOnAction(e -> {
+			listArticlesByGroup(stage, viewByGroupTf.getText());
+
+		});
 		
+		backup.setOnAction(e -> backupArticles());
+		restore.setOnAction(e -> restoreArticles());
+		deleteArticle.setOnAction(e -> {
+			String input = deleteArticleInput.getText();
+			if(articles.get(input) != null)
+			{
+				articles.remove(input);
+				showAlert("Success", "Article Successfully deleted");
+			}
+			else
+				showAlert("Error", "Article does not exist");
+		});
+		backupGroup.setOnAction(e -> {
+			String line = backupByGroup.getText();
+			if(!line.isEmpty())
+			{
+				backupByGroup(line);
+				showAlert("Success", "Successfully backed up group " + line);
+			}
+		});
+		restoreGroup.setOnAction(e ->{
+			String line = restoreByGroup.getText();
+			if(!line.isEmpty())
+			{
+				restoreByGroup(line);
+				showAlert("Success", "Successfully restored group "+ line);
+			}		
+		});
 		
-		layout.getChildren().addAll(action,listArticles,createArticle,deleteArticleInput,deleteArticle,viewArticleInput,viewArticle,goBack);
-		Scene scene = new Scene(layout, 500, 500);
+		layout.getChildren().addAll(action,listArticles,createArticle,deleteArticleInput,deleteArticle,viewArticleInput,viewArticle, viewByGroupTf, viewByGroup, backup, restore, backupByGroup, backupGroup, restoreByGroup, restoreGroup);
+		Scene scene = new Scene(layout, 500, 600);
 		stage.setScene(scene);
 		stage.show();
 	}
@@ -152,16 +212,24 @@ public class UserManagementApp extends Application {
 		
 		VBox layout = new VBox(10);
 		layout.setPadding(new Insets(20,20,20,20));
+		Articles article = articles.get(ArticleName);
 		
 		//text field for article text
-		TextArea article = new TextArea();
-		article.setPromptText("Blah blah blah blah");
+		TextArea articleBody = new TextArea();
+		articleBody.setText(article.getBody());
+		
 		//buttons
 		Button goBack = new Button("Go Back");
 		Button updateArticle = new Button("Update Article");
+		updateArticle.setOnAction(e -> {
+			article.setBody(articleBody.getText());
+			save();
+			showAlert("Success", "The article has been updated");
+			articleHomePage(stage);
+		});
 		//button actions
 		goBack.setOnAction(e -> articleHomePage(stage));
-		layout.getChildren().addAll(article, goBack, updateArticle);
+		layout.getChildren().addAll(articleBody, goBack, updateArticle);
 		Scene scene = new Scene(layout, 500, 500);
 		stage.setScene(scene);
 		stage.show();
@@ -181,7 +249,7 @@ public class UserManagementApp extends Application {
 		
 	}
 	
-	private void listArticles(Stage stage)
+	private void listArticles(Stage stage)				//list all articles method for admin and instructor
 	{
 		ObservableList<Articles> articleList = FXCollections.observableArrayList(articles.values());
 		ListView<Articles> listview = new ListView<>(articleList);
@@ -193,7 +261,99 @@ public class UserManagementApp extends Application {
 		Scene scene = new Scene(layout, 300, 200);
 		stage.setScene(scene);
 		stage.show();
+	}	
+	
+	private void listArticlesByGroup(Stage stage, String group)		//list all articles with the same group
+	{
+		Map<String, Articles> groupMap = getArticlesByGroup(group);
+		ObservableList<Articles> articleList = FXCollections.observableArrayList(groupMap.values());
+		ListView<Articles> listview = new ListView<>(articleList);
+		VBox layout = new VBox(10);
+		layout.setPadding(new Insets(20,20,20,20));
+		Button goBack = new Button("Go Back");
+		goBack.setOnAction(e -> articleHomePage(stage));
+		layout.getChildren().addAll(listview, goBack);
+		Scene scene = new Scene(layout, 300, 200);
+		stage.setScene(scene);
+		stage.show();
 	}
+
+	private void updateRolesPage(Stage stage, String username) {
+		VBox layout = new VBox(10);
+		layout.setPadding(new Insets(20,20,20,20));
+		
+		
+		Button addRoleButton = new Button ("Add role");
+		Button removeRoleButton = new Button ("Remove role");
+		Button goBackButton = new Button("Go back");
+		
+		TextField addRoleInput = new TextField();
+		TextField removeRoleInput = new TextField();
+		
+		addRoleInput.setPromptText("Enter role to add: Instructor, Student");
+		removeRoleInput.setPromptText("Enter role to remove: Instructor, Student");
+		
+		User desiredUser = users.get(username);
+		
+		goBackButton.setOnAction(e -> showAdminPage(stage, "Admin"));
+		
+		
+		addRoleButton.setOnAction(e -> {
+			String addedRole = addRoleInput.getText();
+			if(!addedRole.equals("Admin")) { //check if the user is attempting to add an admin role without a code
+				if(addedRole.equals("Student") || addedRole.equals("Instructor")) { //check if the role being added is a valid role
+					if(!desiredUser.getRoles().contains(addedRole)) { //check if user already has the desired role to add
+						desiredUser.getRoles().add(addedRole);
+						showAlert("Success", "Role successfully added");
+					}
+					else {
+						showAlert("Error", "This user already has this role");
+					}
+				}
+				else {
+					showAlert("Error", "Please enter a valid role to add");
+				}
+			}
+			else {
+				showAlert("Error", "Admin roles can only be added through invitations");
+			}
+		});
+		
+		
+		
+		removeRoleButton.setOnAction(e -> {
+			String removedRole = removeRoleInput.getText();
+			if(!removedRole.equals("Admin")){
+				if(desiredUser.getRoles().size() > 1) { //check if the user has more than 1 role
+					if(removedRole.equals("Student") || removedRole.equals("Instructor")) { //check if the role being removed is valid
+						if(desiredUser.getRoles().contains(removedRole)) { //check if the user has the role before removing
+							desiredUser.getRoles().remove(removedRole);
+							showAlert("Success", "Role has been successfully removed");
+						}
+						else {
+							showAlert("Error", "This role cannot be removed as the user does not have that role.");
+						}
+						
+					}
+					else {
+						showAlert("Error", "Please enter a valid role to remove: Instructor, Student");
+					}
+				}
+				else {
+					showAlert("Error", "This role cannot be removed as the user only has one role.");
+				}
+			}
+			else {
+				showAlert("Error", "Admin roles cannot be removed");
+			}
+		});
+		
+		layout.getChildren().addAll(addRoleInput,addRoleButton,removeRoleInput,removeRoleButton,goBackButton);
+		Scene scene = new Scene(layout, 500, 500);
+		stage.setScene(scene);
+		stage.show();
+	}
+
 	
 	private void confirmDelete(Stage stage, String name, String admin) {			//confirmation of deletion page
 		VBox layout = new VBox(10);
@@ -230,7 +390,7 @@ public class UserManagementApp extends Application {
 		} else {
 			showAlert("Error", "This email does not exist, please enter a valid account email");
 		}
-		showAdminPage(stage,admin);
+		showAdminPage(stage, admin);
 	}
 	private void resetUser(Stage stage, String email)		//resets users account
 	{
@@ -607,7 +767,12 @@ public class UserManagementApp extends Application {
 			{
 				Articles newArticle = new Articles(t, d, k, a, b, r, g);
 				if(articles.get(t) == null)			//if article is unique then add it to system else show error
+				{
 					articles.put(t, newArticle);
+					save();
+					showAlert("Success!", "The article has been created.");
+					articleHomePage(stage);
+				}
 				else
 					showAlert("Error", "This article is already in the system.");
 			}
@@ -776,5 +941,190 @@ public class UserManagementApp extends Application {
 		      e.printStackTrace();
 		    }
 		return true;
+	}
+	
+	private Map<String, Articles> getArticlesByGroup(String group)		//returns a map of articles all from the same group
+	{
+		Map<String, Articles> groupMap = new HashMap<>();
+		Articles temp;
+		for(Map.Entry<String, Articles> entry : articles.entrySet())
+		{
+			temp = entry.getValue();
+			if(temp.getGroup().equals(group))
+			{
+				groupMap.put(temp.getTitle(), temp);
+			}
+		}
+		return groupMap;
+		
+	}
+	
+	private void backupArticles()		//back up all articles
+	{
+		File myFile = new File("backup.txt");
+		try {
+			if(myFile.createNewFile())
+				System.out.println("File created with name: " + myFile.getName());
+			else
+				System.out.println("File already existed overwriting backup");
+		
+			FileWriter writer = new FileWriter("backup.txt");
+			BufferedWriter myWriter = new BufferedWriter(writer);
+			Articles tempA;
+		for(Map.Entry<String, Articles> entry : articles.entrySet())			//write articles into data
+	      {
+	    	  tempA = entry.getValue();
+	    	  myWriter.write(tempA.getTitle());
+	    	  myWriter.newLine();
+	    	  myWriter.write(tempA.getAuthors());
+	    	  myWriter.newLine();
+	    	  myWriter.write(tempA.getBody());
+	    	  myWriter.newLine();
+	    	  myWriter.write(tempA.getDescription());
+	    	  myWriter.newLine();
+	    	  myWriter.write(tempA.getGroup());
+	    	  myWriter.newLine();
+	    	  myWriter.write(tempA.getKeywords());
+	    	  myWriter.newLine();
+	    	  myWriter.write(tempA.getReferences());
+	    	  myWriter.newLine();
+	    	  
+	      }
+	      myWriter.close();
+		}
+	      catch (IOException e)
+			{
+				System.out.println("An error occurred.");
+				e.printStackTrace();
+			}
+	}
+	
+	private void backupByGroup(String group)
+	{
+		File myFile = new File(group + ".txt");			//new file with group name
+		try
+		{
+			if(myFile.createNewFile())
+				System.out.println("New backup created with name " + myFile.getName());
+			else
+				System.out.println("Backup with group " + group + " already existed overwriting withe new backup");
+			
+			FileWriter writer = new FileWriter(myFile);
+			BufferedWriter myWriter = new BufferedWriter(writer);
+			Articles tempA;
+			
+			for(Map.Entry<String, Articles> entry : articles.entrySet())			//write articles that exist in that group into backup
+		      {
+		    	  tempA = entry.getValue();
+		    	  if(tempA.getGroup().equals(group)) {
+		    		  myWriter.write(tempA.getTitle());
+		    		  myWriter.newLine();
+		    		  myWriter.write(tempA.getAuthors());
+		    		  myWriter.newLine();
+		    		  myWriter.write(tempA.getBody());
+		    		  myWriter.newLine();
+		    		  myWriter.write(tempA.getDescription());
+		    		  myWriter.newLine();
+		    		  myWriter.write(tempA.getGroup());
+		    		  myWriter.newLine();
+		    		  myWriter.write(tempA.getKeywords());
+		    		  myWriter.newLine();
+		    		  myWriter.write(tempA.getReferences());
+		    		  myWriter.newLine();
+		    	  }
+		      }
+			myWriter.close();
+		}
+		catch (IOException e)
+		{
+			System.out.println("An error occurred.");
+			e.printStackTrace();
+		}
+	}
+	
+	private void restoreByGroup(String group)
+	{
+		File backup = new File(group + ".txt");
+		try
+		{
+			if(backup.createNewFile())		//if file didn't already exist return since you cannot restore
+			{
+				System.out.println("File does not exist");
+				return;
+			}
+			else
+			{
+				Scanner reader = new Scanner(backup);		        
+		        String line;
+		        while(reader.hasNextLine())
+		        {
+		        	line = reader.nextLine();
+		        	String t = line;
+		        	line = reader.nextLine();
+		        	String a = line;
+		        	line = reader.nextLine();
+		        	String b = line;
+		        	line = reader.nextLine();
+		        	String d = line;
+		        	line = reader.nextLine();
+		        	String g = line;
+		        	line = reader.nextLine();
+		        	String k = line;
+		        	line = reader.nextLine();
+		        	String r = line;
+		        	Articles newArt = new Articles(t, d, k, a, b, r, g);
+		        	if(articles.get(t) == null)				//only restore article if it does not already exist in real time system
+		        		articles.put(t, newArt);
+		        }
+		        reader.close();
+			}
+		}
+		catch (IOException e)
+		{
+			System.out.println("An error occurred.");
+			e.printStackTrace();
+		}
+	}
+	
+	private void restoreArticles()		//restore articles from backup 
+	{
+		File backup = new File("backup.txt");
+		try {
+			if(backup.createNewFile())
+			{
+				System.out.println("Backup file does not exist");
+			}
+			else
+			{
+				Scanner reader = new Scanner(backup);		        
+		        String line;
+		        while(reader.hasNextLine())
+		        {
+		        	line = reader.nextLine();
+		        	String t = line;
+		        	line = reader.nextLine();
+		        	String a = line;
+		        	line = reader.nextLine();
+		        	String b = line;
+		        	line = reader.nextLine();
+		        	String d = line;
+		        	line = reader.nextLine();
+		        	String g = line;
+		        	line = reader.nextLine();
+		        	String k = line;
+		        	line = reader.nextLine();
+		        	String r = line;
+		        	Articles newArt = new Articles(t, d, k, a, b, r, g);
+		        	if(articles.get(t) == null)				//only restore article if it does not already exist in real time system
+		        		articles.put(t, newArt);
+		        }
+		        reader.close();
+			}
+		}
+		catch (IOException e)
+		{
+			System.out.println("An error occurred.");
+			e.printStackTrace();
+		}
 	}
 }
